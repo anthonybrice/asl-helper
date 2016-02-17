@@ -1,0 +1,113 @@
+## ASL signs data file
+--- # Unit 1
+unit: 1
+signs:
+  - file: hello.png
+    desc: greeting
+  - file: named.png
+    desc: be named; name
+  - file: what.png
+    desc: used to ask what, as in a definition
+  - file: who.png
+    desc: used to ask who, as in identifiaction of a person
+  - file: where.png
+    desc: used to ask for the location of something
+  - file: goodsee.png
+    desc: express pleasure in meeting someone
+  - file: boy.png
+    desc: male
+  - file: girl.png
+    desc: female
+  - file: person.png
+    desc: person
+  - file: shirt.png
+    desc: shirt
+  - file: pants.png
+    desc: pants
+  - file: shirt2.png
+    desc: snazzy shirt (?)
+  - file: dress.png
+    desc: dress
+  - file: skirt.png
+    desc: skirt
+  - file: shoes.png
+    desc: shoes
+  - file: hat.png
+    desc: hat
+  - file: glasses.png
+    desc: glasses
+  - file: clothes.png
+    desc: clothes
+  - file: hair.png
+    desc: hair
+  - file: mustache.png
+    desc: mustache
+  - file: beard.png
+    desc: beard
+  - file: stand.png
+    desc: stand
+  - file: jump.png
+    desc: jump
+  - file: dance.png
+    desc: dance
+  - file: twirl.png
+    desc: twirl
+  - file: door.png
+    desc: door
+  - file: opendoor.png
+    desc: open door
+  - file: window
+    desc: window
+  - file: openwindow.png
+    desc: open window
+  - file: light.png
+    desc: light
+  - file: lightson.png
+    desc: turn on lights
+  - file: book.png
+    desc: book
+  - file: openbook.png
+    desc: open book
+  - file: paper.png
+    desc: paper
+  - file: paperthings.png
+    desc: things you do with paper (?)
+  - file: chair.png
+    desc: chair
+  - file: sit.png
+    desc: you sit (?)
+  - file: same.png
+    desc: same
+  - file: different.png
+    desc: different
+  - file: names.png
+    desc: names
+  - file: shapes.png
+    desc: shapes
+  - file: numbers.png
+    desc: numbers
+  - file: letters.png
+    desc: letters
+  - file: recall.png
+    desc: to recall, to remember
+  - file: forget.png
+    desc: unable to recall, to forget
+  - file: repeat.png
+    desc: to ask to repeat; do again
+  - file: correct.png
+    desc: to be correct
+  - file: incorrect.png
+    desc: to be incorrect
+  - file: imitate.png
+    desc: to imitate; make same; to copy
+  - file: fingerspell.png
+    desc: to fingerspell
+  - file: draw.png
+    desc: to draw
+  - file: write.png
+    desc: to write
+  - file: jot.png
+    desc: to write down something short or quickly, to jot down
+  - file: homework.png
+    desc: assignment to do at home
+...
