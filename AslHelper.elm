@@ -51,7 +51,8 @@ init unit' =
              }
     }
   , Effects.batch [ getUnitInfo unit'
-                  , Effects.tick FirstSeed
+                  --, Effects.tick FirstSeed
+                  --, getUnitInfoString unit'
                   ]
   )
 
@@ -64,6 +65,7 @@ type Action
   | RevealSign
   | FirstSeed Time
   | UnitInfo (List (String, String))
+  | LogString (Maybe String)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -92,8 +94,12 @@ update action model =
          )
 
     UnitInfo signs' -> ( { model | signs = signs' }
-                       , Effects.none
+                       , Effects.tick FirstSeed
                        )
+    LogString ms ->
+      let s = Maybe.withDefault "" ms
+          _ = log s ""
+      in (model, Effects.none)
 
 
 newSign : Model -> Int -> Sign
@@ -155,9 +161,16 @@ getUnitInfo unit =
     |> Task.map UnitInfo
     |> Effects.task
 
+getUnitInfoString : Int -> Effects Action
+getUnitInfoString unit =
+  Http.getString (infoUrl unit)
+    |> Task.toMaybe
+    |> Task.map LogString
+    |> Effects.task
+
 infoError : Http.Error -> Task a (List (String, String))
 infoError e =
-  let doLog s = let _ = log s
+  let doLog s = let _ = log s ""
                 in Task.succeed [("","")]
   in case e of
     Http.Timeout -> doLog "Request timed out"
