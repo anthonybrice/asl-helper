@@ -2,7 +2,9 @@ import Effects exposing (Never)
 import AslHelper exposing (init, update, view)
 import StartApp
 import Task
+import Html
 
+app : StartApp.App AslHelper.Model
 app =
   StartApp.start
     { init = init 1
@@ -11,6 +13,7 @@ app =
     , inputs = []
     }
 
+main : Signal Html.Html
 main =
   app.html
 

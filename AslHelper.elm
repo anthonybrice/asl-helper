@@ -5,47 +5,56 @@ import Html exposing (..)
 import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Http
+--import Http exposing (Error)
 import Json.Decode as Json
+import Json.Decode exposing (Decoder, (:=))
 import Task
-import Task exposing (Task)
 import Signal exposing (Signal)
 
-import Random exposing (int, initialSeed, generate, list)
+import Random
 import Time exposing (Time)
 
 import List.Extra exposing ((!!))
-import List exposing (head)
+import List exposing (head, length)
+
+import Result exposing (Result)
+
+import Debug exposing (..)
 
 -----------
 -- MODEL --
 -----------
 
 type alias Model =
-   { unit : Int
-   , seed : Random.Seed
-   , ordering : List Int
-   , index : Int
-   , sign : Sign
-   }
+  { unit : Int
+  , seed : Random.Seed
+  , signs : List (String, String)
+  , ordering : List Int
+  , index : Int
+  , sign : Sign
+  }
 
 type alias Sign =
-  { signifierUrl : String -- need better names
-  , signifiedUrl : String
-  , isSignifiedVisible : Bool
+  { signifierUrl : String
+  , desc : String
+  , isDescVisible : Bool
   }
 
 init : Int -> (Model, Effects Action)
 init unit' =
   ( { unit = unit'
     , ordering = []
-    , seed = initialSeed 42
+    , seed = Random.initialSeed 42
     , index = 0
+    , signs = []
     , sign = { signifierUrl = ""
-             , signifiedUrl = ""
-             , isSignifiedVisible = False
+             , desc = ""
+             , isDescVisible = False
              }
     }
-  , Effects.tick FirstSeed
+  , Effects.batch [ getUnitInfo unit'
+                  , Effects.tick FirstSeed
+                  ]
   )
 
 ------------
@@ -55,48 +64,54 @@ init unit' =
 type Action
   = NextSign
   | RevealSign
-  | NewSign (Maybe String)
   | FirstSeed Time
+  | UnitInfo (Result Http.Error (List (String, String)))
 
-randList : Random.Generator (List Int)
-randList = list 20 (int 1 20)
+-- randList : Int -> Int -> Random.Generator (List Int)
+-- randList = list 20 (int 1 20)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
     NextSign ->
-      let mint = model.ordering !! (model.index + 1)
-      in case mint of
-           Just i -> (model, getSign model.unit i)
-           Nothing -> (model, Effects.none)
-
-
-    RevealSign ->
-      let msign = model.sign
-          sign' = { msign | isSignifiedVisible = True }
-      in ( { model | sign = sign' }
-         , Effects.none
-         )
-
-    NewSign maybeUrl ->
-      let msign = model.sign
-          d = msign.signifiedUrl
-          r = msign.signifierUrl
-          sign' = Sign (Maybe.withDefault r maybeUrl)
-                       (Maybe.withDefault d maybeUrl)
-                       False
+      let sign' = newSign model <| model.index + 1
       in ( { model | index = model.index + 1, sign = sign' }
          , Effects.none
          )
 
+    RevealSign ->
+      let msign = model.sign
+          sign' = { msign | isDescVisible = True }
+      in ( { model | sign = sign' }
+         , Effects.none
+         )
+
     FirstSeed time ->
-      let (ordering', seed') = generate randList (initialSeed (truncate time))
-          mint = head ordering'
-      in case mint of
-           Just i -> ( { model | ordering = ordering' }
-                     , getSign model.unit i
-                     )
-           Nothing -> (model, Effects.none)
+      let maxInt = length model.signs
+          (ordering', seed') = generate (permutation [0..maxInt])
+                               (Random.initialSeed (truncate time))
+          i = Maybe.withDefault 0 <| head ordering'
+          sign' = newSign model i
+      in ( { model | ordering = ordering', sign = sign', seed = seed' }
+         , Effects.none
+         )
+
+    UnitInfo result ->
+      case result of
+        Err e -> let _ = infoError e
+                 in ( model, Effects.none)
+        Ok v -> let signs' = v
+                in ( { model | signs = signs' }
+                   , Effects.none
+                   )
+
+
+
+newSign : Model -> Int -> Sign
+newSign model signIndex =
+  let (file, desc) = Maybe.withDefault ("Nothing in signs", "Nothing in signs")
+                     <| model.signs !! signIndex
+  in Sign (fileUrl file) desc False
 
 ----------
 -- VIEW --
@@ -107,11 +122,15 @@ update action model =
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  div [ style [ "width" => "200px" ] ]
-        [ h2 [headerStyle] [text <| toString model.unit ]
-        , div [imgStyle model.sign.signifierUrl] []
-        , button [ onClick address NextSign ] [ text "Next Sign!" ]
-        ]
+  let descStyle = if model.sign.isDescVisible
+                  then headerStyle
+                  else invisibleStyle
+  in div [ style [ "width" => "200px" ] ]
+       [ h2 [headerStyle] [text <| "Unit " ++ (toString model.unit)]
+       , div [imgStyle model.sign.signifierUrl] []
+       , h3 [descStyle] [text model.sign.desc]
+       , button [ onClick address NextSign ] [ text "Next Sign!" ]
+       ]
 
 headerStyle : Attribute
 headerStyle =
@@ -119,6 +138,11 @@ headerStyle =
     [ "width" => "200px"
     , "text-align" => "center"
     ]
+
+invisibleStyle : Attribute
+invisibleStyle =
+  style
+    [ "visibility" => "hidden" ]
 
 imgStyle : String -> Attribute
 imgStyle url =
@@ -135,18 +159,76 @@ imgStyle url =
 -- EFFECTS --
 -------------
 
-getSign : Int -> Int -> Effects Action
-getSign unit num =
-  Http.get decodeUrl (signUrl unit num)
-      |> Task.toMaybe
-      |> Task.map NewSign
-      |> Effects.task
+getUnitInfo : Int -> Effects Action
+getUnitInfo unit =
+  Http.get decodeInfo (infoUrl unit)
+    --|> Task.toMaybe
+    |> Task.onError infoError
+    --|> Task.toResult
+    |> Task.map UnitInfo
+    |> Effects.task
 
+infoError : Http.Error -> a -> a
+infoError e =
+  case e of
+    Http.Timeout -> log "Request timed out"
+    Http.NetworkError -> log "A network error occurred"
+    Http.UnexpectedPayload s -> log <| "Unexpected payload: " ++ s
+    Http.BadResponse i s -> log <| "Bad response " ++ (toString i) ++ ": " ++ s
 
-signUrl : Int -> Int -> String
-signUrl unit num =
-  Http.url "http://localhost:8080" []
+infoUrl : Int -> String
+infoUrl unit =
+  Http.url "http://localhost:8080/asl/signs"
+        [ ("filter", "{'unit':" ++ (toString unit) ++ "}")
+        , ("hal", "c")
+        ]
 
-decodeUrl : Json.Decoder String
-decodeUrl =
-  Json.at ["data", "image_url"] Json.string
+decodeInfo : Json.Decoder (List (String, String))
+decodeInfo =
+  Json.at [ "_embedded", "rh:doc" ] <| Json.list decodeSign
+
+decodeSign : Json.Decoder (String, String)
+decodeSign =
+  Json.object2 (,)
+    ("file" := Json.string)
+    ("desc" := Json.string)
+
+fileUrl : String -> String
+fileUrl file =
+  Http.url ("http://localhost:8080/static/signs/" ++ file) []
+
+type Generator a =
+  Generator (Random.Seed -> (a, Random.Seed))
+
+generate : Generator a -> Random.Seed -> (a, Random.Seed)
+generate (Generator generate) seed =
+  generate seed
+
+permutation : List a -> Generator (List a)
+permutation list =
+  let
+    length = List.length list
+
+    {- Knuth shuffle subproblem -}
+    randomMove n ((output, seed), input) =
+      let
+        (rand, newSeed) =
+          Random.generate (Random.int 0 (n-1)) seed
+
+        {- Add the `rand`th element of the remaining list of inputs to the
+        output permutation. -}
+        output' =
+          input
+            |> List.drop rand
+            |> List.take 1
+            |> List.append output
+
+        {- Strike the `rand`th element from the list of remaining inputs. -}
+        input' =
+          (List.take rand input) ++ (List.drop (rand+1) input)
+      in
+        ((output', newSeed), input')
+  in
+    Generator <| \seed ->
+      List.foldr randomMove (([], seed), list) [1..length]
+        |> fst
