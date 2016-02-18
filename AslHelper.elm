@@ -8,7 +8,7 @@ import Http
 --import Http exposing (Error)
 import Json.Decode as Json
 import Json.Decode exposing (Decoder, (:=))
-import Task
+import Task exposing (Task)
 import Signal exposing (Signal)
 
 import Random
@@ -16,8 +16,6 @@ import Time exposing (Time)
 
 import List.Extra exposing ((!!))
 import List exposing (head, length)
-
-import Result exposing (Result)
 
 import Debug exposing (..)
 
@@ -65,10 +63,7 @@ type Action
   = NextSign
   | RevealSign
   | FirstSeed Time
-  | UnitInfo (Result Http.Error (List (String, String)))
-
--- randList : Int -> Int -> Random.Generator (List Int)
--- randList = list 20 (int 1 20)
+  | UnitInfo (List (String, String))
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -96,15 +91,9 @@ update action model =
          , Effects.none
          )
 
-    UnitInfo result ->
-      case result of
-        Err e -> let _ = infoError e
-                 in ( model, Effects.none)
-        Ok v -> let signs' = v
-                in ( { model | signs = signs' }
-                   , Effects.none
-                   )
-
+    UnitInfo signs' -> ( { model | signs = signs' }
+                       , Effects.none
+                       )
 
 
 newSign : Model -> Int -> Sign
@@ -162,19 +151,19 @@ imgStyle url =
 getUnitInfo : Int -> Effects Action
 getUnitInfo unit =
   Http.get decodeInfo (infoUrl unit)
-    --|> Task.toMaybe
-    |> Task.onError infoError
-    --|> Task.toResult
+    |> flip Task.onError infoError
     |> Task.map UnitInfo
     |> Effects.task
 
-infoError : Http.Error -> a -> a
+infoError : Http.Error -> Task a (List (String, String))
 infoError e =
-  case e of
-    Http.Timeout -> log "Request timed out"
-    Http.NetworkError -> log "A network error occurred"
-    Http.UnexpectedPayload s -> log <| "Unexpected payload: " ++ s
-    Http.BadResponse i s -> log <| "Bad response " ++ (toString i) ++ ": " ++ s
+  let doLog s = let _ = log s
+                in Task.succeed [("","")]
+  in case e of
+    Http.Timeout -> doLog "Request timed out"
+    Http.NetworkError -> doLog "A network error occurred"
+    Http.UnexpectedPayload s -> doLog <| "Unexpected payload: " ++ s
+    Http.BadResponse i s -> doLog <| "Bad response " ++ (toString i) ++ ": " ++ s
 
 infoUrl : Int -> String
 infoUrl unit =
