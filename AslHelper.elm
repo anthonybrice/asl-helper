@@ -25,7 +25,7 @@ import List exposing (head, length, map, take, drop)
 {-| A struct with the current state of the helper. -}
 type alias Model =
   { unit : Int                    -- ^ The unit (in reference to signing
-                                  --   naturally)
+                                  --naturally)
   , seed : Random.Seed            -- ^ The seed we use to permute the signs
   , signs : List Sign             -- ^ The signs this helper will iterate
   , index : Int                   -- ^ Current index into signs
