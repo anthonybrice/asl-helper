@@ -32,9 +32,7 @@ type alias Model =
   , sign : Sign                   -- ^ The current sign
   }
 
-{-| A struct of the current sign
-
- -}
+{-| A struct of a sign. -}
 type alias Sign =
   { signifierUrl : String         -- ^ The URL to an image of the signifier
   , desc : String                 -- ^ An English description of the signified
@@ -164,7 +162,7 @@ imgStyle url =
 getUnitInfo : Int -> Effects Action
 getUnitInfo unit =
   Http.get decodeInfo (infoUrl unit)
-    |> flip Task.onError <| Task.succeed [("", "")]
+    |> flip Task.onError (\_ -> Task.succeed [("", "")])
     |> Task.map UnitInfo
     |> Effects.task
 
@@ -191,9 +189,6 @@ fileUrl file =
 
 doSpace : Int -> Action
 doSpace keyCode =
-  -- let _ = log "keyCode is " keyCode
-  --     _ = log "char should be " <| Char.fromCode keyCode
-  -- in
   case Char.fromCode keyCode of
        '\'' -> HandleSpace
        _ -> NoOp
@@ -201,6 +196,8 @@ doSpace keyCode =
 ------------------
 -- PERMUTATIONS --
 ------------------
+-- ^ Credit: blitzrk
+-- ^ https://gist.github.com/blitzrk/3a1f2d07191823af1393
 
 type Generator a =
   Generator (Random.Seed -> (a, Random.Seed))
