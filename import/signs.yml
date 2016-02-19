@@ -56,7 +56,7 @@ signs:
     desc: door
   - file: opendoor.png
     desc: open door
-  - file: window
+  - file: window.png
     desc: window
   - file: openwindow.png
     desc: open window

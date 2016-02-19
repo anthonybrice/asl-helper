@@ -15,7 +15,9 @@ import Random
 import Time exposing (Time)
 
 import List.Extra exposing ((!!))
-import List exposing (head, length)
+import List exposing (head, length, map, take, drop)
+
+--import Debug exposing (..)
 
 -----------
 -- MODEL --
@@ -26,9 +28,8 @@ type alias Model =
   { unit : Int                    -- ^ The unit (in reference to signing
                                   --   naturally)
   , seed : Random.Seed            -- ^ The seed we use to permute the signs
-  , signs : List (String, String) -- ^ The signs this helper will iterate
-  , ordering : List Int           -- ^ The order in which we iterate
-  , index : Int                   -- ^ Current index into ordering
+  , signs : List Sign             -- ^ The signs this helper will iterate
+  , index : Int                   -- ^ Current index into signs
   , sign : Sign                   -- ^ The current sign
   }
 
@@ -43,7 +44,6 @@ type alias Sign =
 init : Int -> (Model, Effects Action)
 init unit' =
   ( { unit = unit'
-    , ordering = []
     , seed = Random.initialSeed 42
     , index = 0
     , signs = []
@@ -68,6 +68,7 @@ type Action
                                      --   due to bug in elm.)
   | FirstSeed Time                   -- ^ Get the initial seed from the program's start time
   | UnitInfo (List (String, String)) -- ^ Get the signs for the given unit
+  | PreviousSign                     -- ^ Iterate backwards.
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -75,7 +76,7 @@ update action model =
     NoOp -> (model, Effects.none)
 
     NextSign ->
-      let sign' = newSign model <| model.index + 1
+      let sign' = newSign model.signs <| model.index + 1
       in ( { model | index = model.index + 1, sign = sign' }
          , Effects.none
          )
@@ -83,17 +84,17 @@ update action model =
     RevealSign ->
       let msign = model.sign
           sign' = { msign | isDescVisible = True }
-      in ( { model | sign = sign' }
+          signs' = replaceSign model.signs sign' model.index
+      in ( { model | sign = sign', signs = signs' }
          , Effects.none
          )
 
     FirstSeed time ->
       let maxInt = length model.signs
-          (ordering', seed') = generate (permutation [0..maxInt])
-                               (Random.initialSeed (truncate time))
-          i = Maybe.withDefault 0 <| head ordering'
-          sign' = newSign model i
-      in ( { model | ordering = ordering', sign = sign', seed = seed' }
+          (signs', seed') = generate (permutation model.signs)
+                            (Random.initialSeed (truncate time))
+          sign' = newSign signs' 0
+      in ( { model | signs = signs', sign = sign', seed = seed' }
          , Effects.none
          )
 
@@ -102,15 +103,28 @@ update action model =
       then (model, Effects.task <| Task.succeed NextSign)
       else (model, Effects.task <| Task.succeed RevealSign)
 
-    UnitInfo signs' -> ( { model | signs = signs' }
-                       , Effects.tick FirstSeed
-                       )
+    PreviousSign ->
+      let sign' = newSign model.signs <| model.index - 1
+      in ( { model | index = model.index - 1, sign = sign' }
+         , Effects.none
+         )
 
-newSign : Model -> Int -> Sign
-newSign model signIndex =
-  let (file, desc) = Maybe.withDefault ("Nothing in signs", "Nothing in signs")
-                     <| model.signs !! signIndex
-  in Sign (fileUrl file) desc False
+    UnitInfo tups ->
+      let signs' = map initSign tups
+      in ( { model | signs = signs' }
+         , Effects.tick FirstSeed
+         )
+
+replaceSign : List Sign -> Sign -> Int -> List Sign
+replaceSign xs y i = take i xs ++ [y] ++ drop (i + 1) xs
+
+initSign : (String, String) -> Sign
+initSign (x, y) = Sign (fileUrl x) y False
+
+newSign : List Sign -> Int -> Sign
+newSign signs signIndex =
+  Maybe.withDefault (Sign "Nothing in signs" "Nothing in signs" False)
+         <| signs !! signIndex
 
 ----------
 -- VIEW --
@@ -180,8 +194,8 @@ decodeInfo =
 decodeSign : Json.Decoder (String, String)
 decodeSign =
   Json.object2 (,)
-    ("file" := Json.string)
-    ("desc" := Json.string)
+        ("file" := Json.string)
+        ("desc" := Json.string)
 
 fileUrl : String -> String
 fileUrl file =
@@ -189,9 +203,13 @@ fileUrl file =
 
 doSpace : Int -> Action
 doSpace keyCode =
+  --let _ = log "Char.fromCode keyCode == " <| Char.fromCode keyCode
+  --in
   case Char.fromCode keyCode of
-       '\'' -> HandleSpace
-       _ -> NoOp
+    '\'' -> HandleSpace -- ^ right arrow
+    '%' -> PreviousSign -- ^ and left arrow according to firefox apparently
+                        -- see: https://github.com/elm-lang/core/pull/463
+    _ -> NoOp
 
 ------------------
 -- PERMUTATIONS --
