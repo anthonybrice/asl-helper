@@ -6,7 +6,6 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (onKeyPress, onClick)
 import Char
 import Http
---import Http exposing (Error)
 import Json.Decode as Json
 import Json.Decode exposing (Decoder, (:=))
 import Task exposing (Task)
@@ -22,21 +21,27 @@ import List exposing (head, length)
 -- MODEL --
 -----------
 
+{-| A struct with the current state of the helper. -}
 type alias Model =
-  { unit : Int
-  , seed : Random.Seed
-  , signs : List (String, String)
-  , ordering : List Int
-  , index : Int
-  , sign : Sign
+  { unit : Int                    -- ^ The unit (in reference to signing
+                                  --   naturally)
+  , seed : Random.Seed            -- ^ The seed we use to permute the signs
+  , signs : List (String, String) -- ^ The signs this helper will iterate
+  , ordering : List Int           -- ^ The order in which we iterate
+  , index : Int                   -- ^ Current index into ordering
+  , sign : Sign                   -- ^ The current sign
   }
 
+{-| A struct of the current sign
+
+ -}
 type alias Sign =
-  { signifierUrl : String
-  , desc : String
-  , isDescVisible : Bool
+  { signifierUrl : String         -- ^ The URL to an image of the signifier
+  , desc : String                 -- ^ An English description of the signified
+  , isDescVisible : Bool          -- ^
   }
 
+{-| Sets dummy values, then gets things rolling with a call to `getUnitInfo`. -}
 init : Int -> (Model, Effects Action)
 init unit' =
   ( { unit = unit'
@@ -56,13 +61,15 @@ init unit' =
 -- UPDATE --
 ------------
 
+{-| All the actions a helper can take. -}
 type Action
-  = NextSign
-  | RevealSign
-  | NoOp
-  | HandleSpace
-  | FirstSeed Time
-  | UnitInfo (List (String, String))
+  = NextSign                         -- ^ Iterate to the next sign given by ordering
+  | RevealSign                       -- ^ Show desc
+  | NoOp                             -- ^
+  | HandleSpace                      -- ^ Chooses either `NextSign` or `RevealSign` on space. (Busted
+                                     --   due to bug in elm.)
+  | FirstSeed Time                   -- ^ Get the initial seed from the program's start time
+  | UnitInfo (List (String, String)) -- ^ Get the signs for the given unit
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
@@ -157,19 +164,9 @@ imgStyle url =
 getUnitInfo : Int -> Effects Action
 getUnitInfo unit =
   Http.get decodeInfo (infoUrl unit)
-    |> flip Task.onError infoError
+    |> flip Task.onError <| Task.succeed [("", "")]
     |> Task.map UnitInfo
     |> Effects.task
-
-infoError : Http.Error -> Task a (List (String, String))
-infoError e = Task.succeed [("","")]
-  -- let doLog s = let _ = log s ""
-  --               in Task.succeed [("","")]
-  -- in case e of
-  --   Http.Timeout -> doLog "Request timed out"
-  --   Http.NetworkError -> doLog "A network error occurred"
-  --   Http.UnexpectedPayload s -> doLog <| "Unexpected payload: " ++ s
-  --   Http.BadResponse i s -> doLog <| "Bad response " ++ (toString i) ++ ": " ++ s
 
 infoUrl : Int -> String
 infoUrl unit =
@@ -240,3 +237,5 @@ permutation list =
     Generator <| \seed ->
       List.foldr randomMove (([], seed), list) [1..length]
         |> fst
+
+--  LocalWords:  getUnitInfo
