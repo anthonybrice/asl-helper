@@ -2,7 +2,7 @@ module AslHelper where
 
 import Effects exposing (Effects, Never)
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (style, src)
 import Char
 import Http
 import Json.Decode as Json
@@ -90,8 +90,8 @@ update action model =
          )
 
     FirstSeed time ->
-      let (signs', seed') = generate (permutation model.signs)
-                            (Random.initialSeed (truncate time))
+      let (signs', seed') = Random.initialSeed (truncate time)
+                            |> generate (permutation model.signs)
           sign' = getSign signs' model.index
       in ( { model | signs = signs', sign = sign', seed = seed' }
          , Effects.none
@@ -139,34 +139,40 @@ view address model =
   let descStyle = if model.sign.isDescVisible
                   then headerStyle
                   else invisibleStyle
-  in div [ style [ "width" => "20em" ] ]
+  in div [ style [ "width" => "100%"
+                 , "margin" => "auto"
+                 ]
+         ]
        [ h2 [headerStyle] [text <| "Unit " ++ (toString model.unit)]
-       , div [imgStyle model.sign.signifierUrl] []
+       , img [ imgStyle
+             , src model.sign.signifierUrl
+             ] []
        , h3 [descStyle] [text model.sign.desc]
-       , text "Use the arrow keys to navigate."
+       , div [headerStyle] [text "Use the arrow keys to navigate."]
        ]
 
 headerStyle : Attribute
 headerStyle =
   style
-    [ "width" => "200px"
+    [ "width" => "100%"
     , "text-align" => "center"
     ]
 
 invisibleStyle : Attribute
 invisibleStyle =
   style
-    [ "visibility" => "hidden" ]
+    [ "visibility" => "hidden"
+    , "margin" => "0 auto"
+    , "display" => "block"
+    ]
 
-imgStyle : String -> Attribute
-imgStyle url =
+imgStyle : Attribute
+imgStyle =
   style
-    [ "display" => "inline-block"
-    , "width" => "400px"
-    , "height" => "400px"
-    , "background-position" => "center center"
-    , "background-size" => "cover"
-    , "background-image" => ("url('" ++ url ++ "')")
+    [ "display" => "block"
+    , "width" => "100%"
+    , "max-width" => "600px"
+    , "margin" => "0 auto"
     ]
 
 -------------
