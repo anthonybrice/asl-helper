@@ -3,7 +3,8 @@ module AslHelper where
 import Effects exposing (Effects, Never)
 import Html exposing (..)
 import Html.Attributes exposing (style)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onKeyPress, onClick)
+import Char
 import Http
 --import Http exposing (Error)
 import Json.Decode as Json
@@ -16,8 +17,6 @@ import Time exposing (Time)
 
 import List.Extra exposing ((!!))
 import List exposing (head, length)
-
-import Debug exposing (..)
 
 -----------
 -- MODEL --
@@ -50,10 +49,7 @@ init unit' =
              , isDescVisible = False
              }
     }
-  , Effects.batch [ getUnitInfo unit'
-                  --, Effects.tick FirstSeed
-                  --, getUnitInfoString unit'
-                  ]
+  , getUnitInfo unit'
   )
 
 ------------
@@ -63,13 +59,16 @@ init unit' =
 type Action
   = NextSign
   | RevealSign
+  | NoOp
+  | HandleSpace
   | FirstSeed Time
   | UnitInfo (List (String, String))
-  | LogString (Maybe String)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
+    NoOp -> (model, Effects.none)
+
     NextSign ->
       let sign' = newSign model <| model.index + 1
       in ( { model | index = model.index + 1, sign = sign' }
@@ -93,14 +92,14 @@ update action model =
          , Effects.none
          )
 
+    HandleSpace ->
+      if model.sign.isDescVisible
+      then (model, Effects.task <| Task.succeed NextSign)
+      else (model, Effects.task <| Task.succeed RevealSign)
+
     UnitInfo signs' -> ( { model | signs = signs' }
                        , Effects.tick FirstSeed
                        )
-    LogString ms ->
-      let s = Maybe.withDefault "" ms
-          _ = log s ""
-      in (model, Effects.none)
-
 
 newSign : Model -> Int -> Sign
 newSign model signIndex =
@@ -124,7 +123,8 @@ view address model =
        [ h2 [headerStyle] [text <| "Unit " ++ (toString model.unit)]
        , div [imgStyle model.sign.signifierUrl] []
        , h3 [descStyle] [text model.sign.desc]
-       , button [ onClick address NextSign ] [ text "Next Sign!" ]
+       , button [ onClick address NextSign ]
+                [ text "Next Sign!" ]
        ]
 
 headerStyle : Attribute
@@ -143,8 +143,8 @@ imgStyle : String -> Attribute
 imgStyle url =
   style
     [ "display" => "inline-block"
-    , "width" => "200px"
-    , "height" => "200px"
+    , "width" => "400px"
+    , "height" => "400px"
     , "background-position" => "center center"
     , "background-size" => "cover"
     , "background-image" => ("url('" ++ url ++ "')")
@@ -161,22 +161,15 @@ getUnitInfo unit =
     |> Task.map UnitInfo
     |> Effects.task
 
-getUnitInfoString : Int -> Effects Action
-getUnitInfoString unit =
-  Http.getString (infoUrl unit)
-    |> Task.toMaybe
-    |> Task.map LogString
-    |> Effects.task
-
 infoError : Http.Error -> Task a (List (String, String))
-infoError e =
-  let doLog s = let _ = log s ""
-                in Task.succeed [("","")]
-  in case e of
-    Http.Timeout -> doLog "Request timed out"
-    Http.NetworkError -> doLog "A network error occurred"
-    Http.UnexpectedPayload s -> doLog <| "Unexpected payload: " ++ s
-    Http.BadResponse i s -> doLog <| "Bad response " ++ (toString i) ++ ": " ++ s
+infoError e = Task.succeed [("","")]
+  -- let doLog s = let _ = log s ""
+  --               in Task.succeed [("","")]
+  -- in case e of
+  --   Http.Timeout -> doLog "Request timed out"
+  --   Http.NetworkError -> doLog "A network error occurred"
+  --   Http.UnexpectedPayload s -> doLog <| "Unexpected payload: " ++ s
+  --   Http.BadResponse i s -> doLog <| "Bad response " ++ (toString i) ++ ": " ++ s
 
 infoUrl : Int -> String
 infoUrl unit =
@@ -198,6 +191,19 @@ decodeSign =
 fileUrl : String -> String
 fileUrl file =
   Http.url ("http://localhost:8080/static/signs/" ++ file) []
+
+doSpace : Int -> Action
+doSpace keyCode =
+  -- let _ = log "keyCode is " keyCode
+  --     _ = log "char should be " <| Char.fromCode keyCode
+  -- in
+  case Char.fromCode keyCode of
+       '\'' -> HandleSpace
+       _ -> NoOp
+
+------------------
+-- PERMUTATIONS --
+------------------
 
 type Generator a =
   Generator (Random.Seed -> (a, Random.Seed))
