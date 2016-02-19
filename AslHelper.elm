@@ -3,7 +3,6 @@ module AslHelper where
 import Effects exposing (Effects, Never)
 import Html exposing (..)
 import Html.Attributes exposing (style)
-import Html.Events exposing (onKeyPress, onClick)
 import Char
 import Http
 import Json.Decode as Json
@@ -64,8 +63,7 @@ type Action
   = NextSign                         -- ^ Iterate to the next sign given by ordering
   | RevealSign                       -- ^ Show desc
   | NoOp                             -- ^
-  | HandleSpace                      -- ^ Chooses either `NextSign` or `RevealSign` on space. (Busted
-                                     --   due to bug in elm.)
+  | NextOrRevealSign                 -- ^
   | FirstSeed Time                   -- ^ Get the initial seed from the program's start time
   | UnitInfo (List (String, String)) -- ^ Get the signs for the given unit
   | PreviousSign                     -- ^ Iterate backwards.
@@ -76,8 +74,10 @@ update action model =
     NoOp -> (model, Effects.none)
 
     NextSign ->
-      let sign' = newSign model.signs <| model.index + 1
-      in ( { model | index = model.index + 1, sign = sign' }
+      let l = length model.signs
+          i' = clamp 0 l <| model.index + 1
+          sign' = getSign model.signs i'
+      in ( { model | index = i', sign = sign' }
          , Effects.none
          )
 
@@ -90,22 +90,23 @@ update action model =
          )
 
     FirstSeed time ->
-      let maxInt = length model.signs
-          (signs', seed') = generate (permutation model.signs)
+      let (signs', seed') = generate (permutation model.signs)
                             (Random.initialSeed (truncate time))
-          sign' = newSign signs' 0
+          sign' = getSign signs' model.index
       in ( { model | signs = signs', sign = sign', seed = seed' }
          , Effects.none
          )
 
-    HandleSpace ->
+    NextOrRevealSign ->
       if model.sign.isDescVisible
       then (model, Effects.task <| Task.succeed NextSign)
       else (model, Effects.task <| Task.succeed RevealSign)
 
     PreviousSign ->
-      let sign' = newSign model.signs <| model.index - 1
-      in ( { model | index = model.index - 1, sign = sign' }
+      let l = length model.signs
+          i' = clamp 0 l (model.index - 1)
+          sign' = getSign model.signs i'
+      in ( { model | index = i', sign = sign' }
          , Effects.none
          )
 
@@ -121,8 +122,8 @@ replaceSign xs y i = take i xs ++ [y] ++ drop (i + 1) xs
 initSign : (String, String) -> Sign
 initSign (x, y) = Sign (fileUrl x) y False
 
-newSign : List Sign -> Int -> Sign
-newSign signs signIndex =
+getSign : List Sign -> Int -> Sign
+getSign signs signIndex =
   Maybe.withDefault (Sign "Nothing in signs" "Nothing in signs" False)
          <| signs !! signIndex
 
@@ -138,12 +139,11 @@ view address model =
   let descStyle = if model.sign.isDescVisible
                   then headerStyle
                   else invisibleStyle
-  in div [ style [ "width" => "200px" ] ]
+  in div [ style [ "width" => "20em" ] ]
        [ h2 [headerStyle] [text <| "Unit " ++ (toString model.unit)]
        , div [imgStyle model.sign.signifierUrl] []
        , h3 [descStyle] [text model.sign.desc]
-       , button [ onClick address NextSign ]
-                [ text "Next Sign!" ]
+       , text "Use the arrow keys to navigate."
        ]
 
 headerStyle : Attribute
@@ -176,7 +176,7 @@ imgStyle url =
 getUnitInfo : Int -> Effects Action
 getUnitInfo unit =
   Http.get decodeInfo (infoUrl unit)
-    |> flip Task.onError (\_ -> Task.succeed [("", "")])
+    |> flip Task.onError (always (Task.succeed [("", "")]))
     |> Task.map UnitInfo
     |> Effects.task
 
@@ -206,14 +206,14 @@ doSpace keyCode =
   --let _ = log "Char.fromCode keyCode == " <| Char.fromCode keyCode
   --in
   case Char.fromCode keyCode of
-    '\'' -> HandleSpace -- ^ right arrow
-    '%' -> PreviousSign -- ^ and left arrow according to firefox apparently
-                        -- see: https://github.com/elm-lang/core/pull/463
+    '\'' -> NextOrRevealSign -- ^ right arrow
+    '%' -> PreviousSign      -- ^ and left arrow according to firefox apparently
+                             -- see: https://github.com/elm-lang/core/pull/463
     _ -> NoOp
 
-------------------
--- PERMUTATIONS --
-------------------
+-----------------
+-- PERMUTATION --
+-----------------
 -- ^ Credit: blitzrk
 -- ^ https://gist.github.com/blitzrk/3a1f2d07191823af1393
 
