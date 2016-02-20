@@ -5,6 +5,6 @@ elm-stuff/
 repl-temp-*
 etc/*
 restheart.jar
-static/signs
+static/
 node_modules/*
 index.html
