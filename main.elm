@@ -21,3 +21,7 @@ main =
 port tasks : Signal (Task Never ())
 port tasks =
   app.tasks
+
+port title : String
+port title =
+  "ASL Helper"

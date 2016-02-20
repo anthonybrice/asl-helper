@@ -1,7 +1,10 @@
 module AslHelper where
 
 import Effects exposing (Effects, Never)
-import Html exposing (..)
+import Html
+import Html.Attributes as Html
+import Html exposing (Html, text, toElement, fromElement, blockquote)
+import Bootstrap.Html exposing (..)
 import Html.Attributes exposing (style, src)
 import Char
 import Http
@@ -74,7 +77,7 @@ update action model =
     NoOp -> (model, Effects.none)
 
     NextSign ->
-      let l = length model.signs
+      let l = length model.signs - 1
           i' = clamp 0 l <| model.index + 1
           sign' = getSign model.signs i'
       in ( { model | index = i', sign = sign' }
@@ -103,7 +106,7 @@ update action model =
       else (model, Effects.task <| Task.succeed RevealSign)
 
     PreviousSign ->
-      let l = length model.signs
+      let l = length model.signs - 1
           i' = clamp 0 l (model.index - 1)
           sign' = getSign model.signs i'
       in ( { model | index = i', sign = sign' }
@@ -136,44 +139,34 @@ getSign signs signIndex =
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  let descStyle = if model.sign.isDescVisible
-                  then headerStyle
-                  else invisibleStyle
-  in div [ style [ "width" => "100%"
-                 , "margin" => "auto"
-                 ]
-         ]
-       [ h2 [headerStyle] [text <| "Unit " ++ (toString model.unit)]
-       , img [ imgStyle
-             , src model.sign.signifierUrl
-             ] []
-       , h3 [descStyle] [text model.sign.desc]
-       , div [headerStyle] [text "Use the arrow keys to navigate."]
-       ]
+  let descAtt = if model.sign.isDescVisible
+                then Html.class "text-center"
+                else Html.class "invisible text-center"
+  in containerFluid_
+     [ Html.div [] [stylesheet]
+     , Html.h2 [Html.class "text-center"] [text <| "Unit " ++ toString model.unit]
+     , imgFluid model.sign.signifierUrl
+     , Html.h3 [descAtt] [text model.sign.desc]
+     , Html.div [Html.class "text-center"]
+         [ text "Use the arrow keys to navigate." ]
+     ]
 
-headerStyle : Attribute
-headerStyle =
-  style
-    [ "width" => "100%"
-    , "text-align" => "center"
-    ]
+stylesheet =
+  let
+    tag = "link"
+    attrs =
+      [ Html.attribute "rel"       "stylesheet"
+      , Html.attribute "property"  "stylesheet"
+      , Html.attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+      ]
+    children = []
+  in
+    Html.node tag attrs children
 
-invisibleStyle : Attribute
-invisibleStyle =
-  style
-    [ "visibility" => "hidden"
-    , "margin" => "0 auto"
-    , "display" => "block"
-    ]
-
-imgStyle : Attribute
-imgStyle =
-  style
-    [ "display" => "block"
-    , "width" => "100%"
-    , "max-width" => "600px"
-    , "margin" => "0 auto"
-    ]
+imgFluid : String -> Html
+imgFluid t = Html.img [ Html.class "img-responsive center-block"
+                      , Html.src t
+                      ] []
 
 -------------
 -- EFFECTS --
