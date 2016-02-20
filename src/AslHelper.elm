@@ -39,7 +39,7 @@ type alias Model =
 type alias Sign =
   { signifierUrl : String         -- ^ The URL to an image of the signifier
   , desc : String                 -- ^ An English description of the signified
-  , isDescVisible : Bool          -- ^
+  , isDescVisible : Bool          -- ^ test push
   }
 
 {-| Sets dummy values, then gets things rolling with a call to `getUnitInfo`. -}
@@ -142,8 +142,11 @@ view address model =
   let descAtt = if model.sign.isDescVisible
                 then Html.class "text-center"
                 else Html.class "invisible text-center"
+      styles = [ stylesheet "//localhost:8080/static/css/bootstrap.css"
+               , stylesheet "//localhost:8080/static/css/bootstrap-theme.css"
+               ]
   in containerFluid_
-     [ Html.div [] [stylesheet]
+     [ Html.div [] styles
      , Html.h2 [Html.class "text-center"] [text <| "Unit " ++ toString model.unit]
      , imgFluid model.sign.signifierUrl
      , Html.h3 [descAtt] [text model.sign.desc]
@@ -151,13 +154,14 @@ view address model =
          [ text "Use the arrow keys to navigate." ]
      ]
 
-stylesheet =
+stylesheet : String -> Html
+stylesheet href =
   let
     tag = "link"
     attrs =
       [ Html.attribute "rel"       "stylesheet"
       , Html.attribute "property"  "stylesheet"
-      , Html.attribute "href"      "//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+      , Html.attribute "href"      href
       ]
     children = []
   in
@@ -181,7 +185,7 @@ getUnitInfo unit =
 
 infoUrl : Int -> String
 infoUrl unit =
-  Http.url "http://localhost:8080/asl/signs"
+  Http.url "//localhost:8080/asl/signs"
         [ ("filter", "{'unit':" ++ (toString unit) ++ "}")
         , ("hal", "c")
         ]
@@ -198,7 +202,7 @@ decodeSign =
 
 fileUrl : String -> String
 fileUrl file =
-  Http.url ("http://localhost:8080/static/signs/" ++ file) []
+  Http.url ("//localhost:8080/static/signs/" ++ file) []
 
 doSpace : Int -> Action
 doSpace keyCode =

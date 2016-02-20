@@ -4,7 +4,7 @@
     "repository": "https://github.com/anthonybrice/asl-helper.git",
     "license": "GPL-3.0",
     "source-directories": [
-        "."
+        "src"
     ],
     "exposed-modules": [],
     "dependencies": {
