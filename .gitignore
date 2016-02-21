@@ -6,7 +6,6 @@ repl-temp-*
 etc/
 dist/
 lib/
-nix/
 www/signs/
 www/static/
 node_modules/
