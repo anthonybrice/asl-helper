@@ -1,10 +1,9 @@
 module AslHelper where
 
 import Effects exposing (Effects, Never)
-import Html
-import Html.Attributes as Html
-import Html exposing (Html, text, toElement, fromElement, blockquote)
-import Bootstrap.Html exposing (..)
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Bootstrap.Html exposing (container_, containerFluid_)
 import Html.Attributes exposing (style, src)
 import Char
 import Http
@@ -20,6 +19,12 @@ import List.Extra exposing ((!!))
 import List exposing (head, length, map, take, drop)
 
 --import Debug exposing (..)
+
+webapp : String -> String
+webapp s = "//localhost:8000/" ++ s
+
+api : String -> String
+api s = "//localhost:8080/" ++ s
 
 -----------
 -- MODEL --
@@ -140,18 +145,25 @@ getSign signs signIndex =
 view : Signal.Address Action -> Model -> Html
 view address model =
   let descAtt = if model.sign.isDescVisible
-                then Html.class "text-center"
-                else Html.class "invisible text-center"
-      styles = [ stylesheet "//localhost:8080/static/css/bootstrap.css"
-               , stylesheet "//localhost:8080/static/css/bootstrap-theme.css"
-               ]
+                then class "text-center"
+                else class "invisible text-center"
+      styles = [ stylesheet <| api "static/css/app.min.css" ]
   in containerFluid_
-     [ Html.div [] styles
-     , Html.h2 [Html.class "text-center"] [text <| "Unit " ++ toString model.unit]
+     [ div [] styles
+     , h2 [class "text-center"] [text <| "Unit " ++ toString model.unit]
      , imgFluid model.sign.signifierUrl
-     , Html.h3 [descAtt] [text model.sign.desc]
-     , Html.div [Html.class "text-center"]
-         [ text "Use the arrow keys to navigate." ]
+     , h3 [descAtt] [text model.sign.desc]
+     , footer
+         [class "footer text-center"]
+         [ p [class "text-muted text-center vertical-center"]
+             [ text "Use arrow keys to navigate"
+             , br [] []
+             , a [ href "https://github.com/anthonybrice/asl-helper"
+                 , target "_blank"
+                 ]
+                 [ text "https://github.com/anthonybrice/asl-helper" ]
+             ]
+         ]
      ]
 
 stylesheet : String -> Html
@@ -159,18 +171,18 @@ stylesheet href =
   let
     tag = "link"
     attrs =
-      [ Html.attribute "rel"       "stylesheet"
-      , Html.attribute "property"  "stylesheet"
-      , Html.attribute "href"      href
+      [ attribute "rel"       "stylesheet"
+      , attribute "property"  "stylesheet"
+      , attribute "href"      href
       ]
     children = []
   in
-    Html.node tag attrs children
+    node tag attrs children
 
 imgFluid : String -> Html
-imgFluid t = Html.img [ Html.class "img-responsive center-block"
-                      , Html.src t
-                      ] []
+imgFluid t = img [ class "img-responsive center-block row"
+                 , src t
+                 ] []
 
 -------------
 -- EFFECTS --
@@ -185,7 +197,7 @@ getUnitInfo unit =
 
 infoUrl : Int -> String
 infoUrl unit =
-  Http.url "//localhost:8080/asl/signs"
+  Http.url (api "api/asl/signs")
         [ ("filter", "{'unit':" ++ (toString unit) ++ "}")
         , ("hal", "c")
         ]
@@ -202,7 +214,7 @@ decodeSign =
 
 fileUrl : String -> String
 fileUrl file =
-  Http.url ("//localhost:8080/static/signs/" ++ file) []
+  Http.url (api <| "static/signs/" ++ file) []
 
 doSpace : Int -> Action
 doSpace keyCode =
