@@ -3,8 +3,11 @@
 elm-stuff/
 # elm-repl generated files
 repl-temp-*
-etc/*
-restheart.jar
-static/
-node_modules/*
+etc/
+dist/
+lib/
+nix/
+www/signs/
+www/static/
+node_modules/
 index.html
