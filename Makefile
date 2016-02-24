@@ -11,9 +11,11 @@ WWW = www/
 STATIC = ${WWW}static/
 CSS = ${STATIC}css/
 
-# Dist directories. All front-end files go in PUBLIC
-DISTDIRS = ${DIST} ${PUBLIC} ${PUBSTATIC} ${PUBCSS} ${PUBSTATIC}fonts ${PUBSTATIC}signs ${DIST}etc
+# Dist directories.
+DISTDIRS = ${DIST} ${PUBLIC} ${PUBSTATIC} ${PUBCSS} ${PUBSTATIC}fonts		\
+	${PUBSTATIC}signs ${DIST}etc
 DIST = dist/
+# All front-end files go in PUBLIC
 PUBLIC = ${DIST}PUBLIC/
 PUBSTATIC = ${PUBLIC}static/
 PUBCSS = ${PUBSTATIC}css/
@@ -50,9 +52,9 @@ MINTARGETS = ${CSS}app.min.css
 
 DISTTARGETS = ${DIST}* ${DIST}**/*
 
-all: ${ELMTARGETS} ${MINCTARGETS} ${BSTARGETS} minify
+all: dist
 
-build: all
+build: ${ELMTARGETS} ${MINTARGETS}
 
 ${ELMTARGETS}: ${ELMPATTERN} | ${STATIC}
 	@elm make ${ELMMAIN} --output $@ ${ELM_MAKEFLAGS}
@@ -70,22 +72,22 @@ ${CSS}%.css: ${STY}%.less
 	@lessc ${LESSCFLAGS} $< $@
 
 lint:
-	lessc ${LESSCFLAGS} -l ${LESSCMAIN}
+	@lessc ${LESSCFLAGS} -l ${LESSCMAIN}
 
 minify: ${MINTARGETS}
 
 ${DISTDIRS}:
-	mkdir -p ${DISTDIRS}
+	@mkdir -p ${DISTDIRS}
 
-dist: build | ${DISTDIRS}
-	cp ${MINTARGETS} ${PUBCSS}
-	cp ${ELMTARGETS} ${PUBLIC}
-	cp -r ${STATIC}fonts ${PUBSTATIC}fonts
-	cp -r ${STATIC}signs ${PUBSTATIC}
-	cp ${LIB}restheart.jar ${DIST}
-	cp -r etc/ ${DIST}
+dist: ${DISTDIRS} | build
+	@cp ${MINTARGETS} ${PUBCSS}
+	@cp ${ELMTARGETS} ${PUBLIC}
+	@cp -r ${STATIC}fonts ${PUBSTATIC}
+	@cp -r ${STATIC}signs ${PUBSTATIC}
+	@cp ${LIB}restheart.jar ${DIST}
+	@cp -r etc/ ${DIST}
 
-restheart: dist
+restheart: | dist
 	java -server -jar ${DIST}restheart.jar etc/restheart.yml
 
 watch: | dist
@@ -102,7 +104,7 @@ sync: | dist
 		--reload-delay 500						\
 		--no-open							\
 		--no-online							\
-		--files "${LESSCTARGETS}, ${ELMTARGETS}"
+		--files "${MINTARGETS}, ${ELMTARGETS}"
 
 # Delete all the targets, and for good measure everything in static except the
 # pictures.
