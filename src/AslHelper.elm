@@ -218,8 +218,6 @@ fileUrl file =
 
 doSpace : Int -> Action
 doSpace keyCode =
-  --let _ = log "Char.fromCode keyCode == " <| Char.fromCode keyCode
-  --in
   case Char.fromCode keyCode of
     '\'' -> NextOrRevealSign -- ^ right arrow
     '%' -> PreviousSign      -- ^ and left arrow according to firefox apparently
